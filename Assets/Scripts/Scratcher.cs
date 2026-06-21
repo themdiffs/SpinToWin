@@ -6,84 +6,85 @@ using UnityEngine.InputSystem;
 
 public class Scratcher : MonoBehaviour
 {
-    //[SerializeField] GameObject raycastPlane;
-    //[SerializeField] AudioClip
-    Slider slider;
     [SerializeField] AudioSource source;
-    bool playing = false;
-    float currentTarget = 0;
+    bool scratching = false;
+    [SerializeField] GameObject record;
+    float inputAngle = 0;
+    float angleReference = 0;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        slider = GetComponent<Slider>();
+        //slider = GetComponent<Slider>();
         source.Play();
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (slider.IsPressed())
-        {
-            //this lerps it and works okayyy but if you grab it far and hold it there it slows down as it reaches its goal. If we just have it force to its goal if its on the target note they probably won't notice it, but it is something.
-            source.pitch = Mathf.Lerp(source.pitch, (slider.value * source.clip.length) - source.time, 1 - Mathf.Pow(5000, -Time.deltaTime));
-            playing = false;
+        updateNeedle();
 
-            //tried to have it directly tied to the mouse. honestly sounded pretty good but the scale wasn't matching up. I tried adjusting it based on the width of the slider but wasn't working out.
-            //source.pitch = Mouse.current.delta.ReadValue().x;
-
-            
-            //was thinking each frame I could set it to the pitch necessary to reach the slider value by the next frame, since sound is played between frames. The math checked out on my paper but it definitely doesn't behave correctly.
-            //source.pitch = ((slider.value * source.clip.length) - source.time) / Time.deltaTime;
-        }
-        else if (!playing)
+        //close. Main problems are:
+        //that it's not looping correctly. When you do a full rotation it seems to lerp backwards through the whole song and it doesn't go to the end of the song when you go backwards from the start
+        //One of these equations is desyncing the sound from the record visual when you grab it
+        if (scratching)
         {
-            playing = true;
-            source.pitch = 1;
-            source.time = slider.value * source.clip.length;
+            scratching = true;
+
+            inputAngle = getRotation();
+            float angleDifference = inputAngle - angleReference;
+            angleReference = inputAngle;
+
+            //lotta bullshit math here that's probably causing the desync. I know the normal rotation matches a pitch of 1 so im trying to reverse match the pitch to a certain rotation. the 32 was just brute forced until it felt right, probably an actually correct value to put there
+            source.pitch = Mathf.Lerp(source.pitch, angleDifference / Time.deltaTime * 32, 1 - Mathf.Pow(10, -Time.deltaTime));
+
+            record.transform.Rotate(0, 0, -(angleDifference * 360));
         }
         else
         {
-            //StartCoroutine(lerpPitchToOne(1));
             source.pitch = 1;
-            slider.value = source.time / source.clip.length;
+
+            //I know this is right
+            record.transform.Rotate(0, 0, -(Time.deltaTime * (360f * 4)) / source.clip.length);
         }
 
     }
-
-    //was thinking I could have it go in steps. When the mouse grabs it it gets a new target and sets the pitch and only changes it once it reaches it. This would stop the slow down when the gap is large but it didnt really behave right. I may not have implemented it correctly.
-    bool checkIfReached()
+    private void OnMouseDown()
     {
-        //we've gone past the target
-        if (source.pitch > 0 && source.time > currentTarget)
-        {
-            return true;
-        }
-        //we've gone past the target negatively
-        else if (source.pitch < 0 && source.time < currentTarget)
-        {
-            return true;
-        }
-        else if (source.time - currentTarget < 0.2f && source.time - currentTarget > -0.2f)
-        {
-            return true;
-        }
-
-
-        return false;
+        scratching = true;
+        angleReference = getRotation();
     }
 
-    //was going to have this go when you let go to smooth out the jump but it doesn't really solve the problem
-    IEnumerator lerpPitchToOne(float time)
+    private void OnMouseUp()
     {
-        float elapsed = 0;
+        scratching = false;
+    }
 
-        while (source.pitch != 1)
+    //returns the delta change in angle
+    float getRotation()
+    {
+        RaycastHit hit;
+        float angle = 0f;
+        if (Physics.Raycast(Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue()), out hit, Mathf.Infinity))
         {
-            elapsed += Time.deltaTime;
-            source.pitch = Mathf.Lerp(source.pitch, 1, elapsed / time);
-            yield return null;
+            angle = Vector3.SignedAngle(new Vector3(0, 1, 0), new Vector3(hit.point.x, hit.point.y, 0), new Vector3(0, 0, -1));
+            if (angle <= 0)
+            {
+                angle += 360f;
+            }
         }
+        return angle / 360f;
+    }
 
+    void updateNeedle()
+    {
+        if (Keyboard.current.spaceKey.isPressed)
+        {
+            source.volume = 0;
+        }
+        else
+        {
+            source.volume = 1;
+        }
     }
 }
