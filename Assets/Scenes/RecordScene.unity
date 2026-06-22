@@ -247,6 +247,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Scratcher
   source: {fileID: 955705139}
   record: {fileID: 1589152899}
+  followLag: 0.08
+  catchUpSeconds: 0.1
+  maxPitch: 10
 --- !u!1 &407238514
 GameObject:
   m_ObjectHideFlags: 0
@@ -455,6 +458,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Scratcher
   source: {fileID: 0}
   record: {fileID: 0}
+  followLag: 0.08
+  catchUpSeconds: 0.1
+  maxPitch: 3
 --- !u!1 &882386006
 GameObject:
   m_ObjectHideFlags: 0
