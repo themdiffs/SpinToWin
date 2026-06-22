@@ -7,19 +7,19 @@ using UnityEngine.InputSystem;
 public class Scratcher : MonoBehaviour
 {
     [SerializeField] AudioSource source;
-    bool scratching = false;
     [SerializeField] GameObject record;
+
+    bool scratching = false;
     float inputAngle = 0;
     float angleReference = 0;
+    float targetTimeProgress = 0f;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         //slider = GetComponent<Slider>();
         source.Play();
     }
 
-    // Update is called once per frame
     void Update()
     {
         updateNeedle();
@@ -29,39 +29,55 @@ public class Scratcher : MonoBehaviour
         //One of these equations is desyncing the sound from the record visual when you grab it
         if (scratching)
         {
-            scratching = true;
-
-            inputAngle = getRotation();
-            float angleDifference = inputAngle - angleReference;
+            inputAngle = GetDeltaAngle();
+            float angleDelta = inputAngle - angleReference;
             angleReference = inputAngle;
 
             //lotta bullshit math here that's probably causing the desync. I know the normal rotation matches a pitch of 1 so im trying to reverse match the pitch to a certain rotation. the 32 was just brute forced until it felt right, probably an actually correct value to put there
-            source.pitch = Mathf.Lerp(source.pitch, angleDifference / Time.deltaTime * 32, 1 - Mathf.Pow(10, -Time.deltaTime));
+            source.pitch = Mathf.Lerp(source.pitch, angleDelta / Time.deltaTime * 32, 1 - Mathf.Pow(10, -Time.deltaTime));
 
-            record.transform.Rotate(0, 0, -(angleDifference * 360));
+            //record.transform.Rotate(0, 0, -(angleDelta * 360));
+            targetTimeProgress += angleDelta;
+            var timeProgress = source.time / source.clip.length;
+            record.transform.SetLocalPositionAndRotation(record.transform.localPosition, Quaternion.Euler(0, 0, -timeProgress * 360f));
         }
         else
         {
             source.pitch = 1;
 
             //I know this is right
-            record.transform.Rotate(0, 0, -(Time.deltaTime * (360f * 4)) / source.clip.length);
+            //record.transform.Rotate(0, 0, -(Time.deltaTime * (360f)) / source.clip.length);
+            targetTimeProgress += Time.deltaTime;
+
+            var timeProgress = source.time / source.clip.length;
+            record.transform.SetLocalPositionAndRotation(record.transform.localPosition, Quaternion.Euler(0, 0, -timeProgress * 360f));
         }
 
+        logTimeline();
     }
+
+    private void logTimeline()
+    {
+        var timeProgress = source.time / source.clip.length;
+        var rotationProgess = 1 - (record.transform.localRotation.eulerAngles.z / 360f);
+        Debug.Log($"Scratcher: time progress={timeProgress}, rotations: {rotationProgess} " +
+            $"Diff = {timeProgress - rotationProgess}");
+    }
+
     private void OnMouseDown()
     {
         scratching = true;
-        angleReference = getRotation();
+        angleReference = GetDeltaAngle();
     }
 
     private void OnMouseUp()
     {
         scratching = false;
+        source.time = targetTimeProgress;
     }
 
     //returns the delta change in angle
-    float getRotation()
+    float GetDeltaAngle()
     {
         RaycastHit hit;
         float angle = 0f;
