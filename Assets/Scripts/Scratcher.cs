@@ -60,7 +60,7 @@ public class Scratcher : MonoBehaviour
             CatchUp();
         }
 
-        UpdateRotation(true);
+        UpdateRotation(false);
     }
 
     // After release
