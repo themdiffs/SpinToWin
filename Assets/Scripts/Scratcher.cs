@@ -121,7 +121,7 @@ public class Scratcher : MonoBehaviour
         catchUpTimer = catchUpSeconds;
     }
 
-    //returns the angle under the cursor, normalized 0-1
+    // angle under the cursor, normalized 0-1
     float GetAngle()
     {
         RaycastHit hit;
